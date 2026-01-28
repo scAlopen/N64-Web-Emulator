@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>N64 Web Emulator — Auto-discover .z64 games</title>
+  <title>N64 Web Emulator — Auto-discover .z64 games (renderable links)</title>
   <style>
     :root { --bg:#f7f7f7; --card:#fff; --muted:#666; --accent:#0366d6; }
     body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial; margin:0; padding:1.25rem; background:var(--bg); color:#111; }
@@ -29,13 +29,13 @@
     <header>
       <div>
         <h1>N64 Web Emulator — Auto-discover .z64 games</h1>
-        <div class="hint">This page looks through the repository and finds folders that contain .z64 ROM files, then links to that folder's index.html (where the emulator/game page should live).</div>
+        <div class="hint">This page finds .z64 files in the repository and links to the folder's index.html. Links are converted to renderable URLs so the HTML is shown/run instead of raw code.</div>
       </div>
 
       <div class="controls" aria-hidden="false">
         <label for="gameSelect" style="display:none">Select game</label>
         <select id="gameSelect" aria-label="Select discovered game"></select>
-        <button id="openBtn">Open</button>
+        <button id="openBtn">Open (new tab)</button>
         <button id="openIframeBtn">Open in iframe</button>
       </div>
     </header>
@@ -51,8 +51,9 @@
     <div class="notice small">
       Notes:
       <ul>
-        <li>This file queries the GitHub API to discover .z64 files in the repository <strong>scAlopen/N64-Web-Emulator</strong>. The API is used only to find file paths and locate the corresponding index.html pages.</li>
-        <li>Unauthenticated GitHub API requests are limited (60 requests/hour). If you hit limits, add a server-side manifest or a static JSON listing of ROMs to avoid API calls.</li>
+        <li>To render HTML instead of showing source, this page converts raw GitHub URLs to a renderable URL using raw.githack.com when possible or htmlpreview.github.io as a fallback.</li>
+        <li>These services are public third-party renderers. If you'd rather self-host, enable GitHub Pages for the repo and point links to the Pages URL instead.</li>
+        <li>Unauthenticated GitHub API requests are limited (60 requests/hour). Consider adding a static manifest (games.json) if you hit rate limits.</li>
       </ul>
     </div>
   </div>
@@ -73,19 +74,16 @@
       const iframeWrap = document.getElementById('iframeWrap');
       const iframe = document.getElementById('gameFrame');
 
-      // Helper: fetch Git tree (try HEAD then main)
+      // Helper: fetch Git tree (try HEAD then main/master)
       async function fetchTree() {
         const candidates = ['HEAD', 'main', 'master'];
         for (const ref of candidates) {
           try {
             const url = `${apiBase}/git/trees/${encodeURIComponent(ref)}?recursive=1`;
             const res = await fetch(url, { headers: { Accept: 'application/vnd.github.v3+json' }});
-            if (!res.ok) {
-              // try next ref
-              continue;
-            }
+            if (!res.ok) continue;
             const json = await res.json();
-            if (json && Array.isArray(json.tree)) return json.tree.map(e => e.path);
+            if (json && Array.isArray(json.tree)) return { paths: json.tree.map(e => e.path), ref };
           } catch (err) {
             // continue to next ref
           }
@@ -93,20 +91,36 @@
         throw new Error('Unable to fetch repository tree (no accessible HEAD/main/master).');
       }
 
-      // Helper: check for index.html in a folder and return its raw download_url via contents API
-      async function getIndexHtmlDownloadUrl(folder) {
-        // folder: '' (root) or 'dir/subdir'
+      // Helper: get contents metadata for index.html in folder
+      async function getIndexHtmlInfo(folder) {
         const indexPath = folder ? `${folder}/index.html` : 'index.html';
         const url = `${apiBase}/contents/${encodeURIComponent(indexPath)}`;
         const res = await fetch(url, { headers: { Accept: 'application/vnd.github.v3+json' }});
         if (!res.ok) return null;
         const json = await res.json();
-        // 'download_url' is the raw URL you can open directly in the browser
-        return json.download_url || null;
+        // return both download_url (raw) and html_url (github blob)
+        return { download_url: json.download_url || null, html_url: json.html_url || null };
+      }
+
+      // Convert a raw.githubusercontent/download_url or html_url to a renderable URL:
+      // Prefer raw.githack.com (fast) by transforming raw.githubusercontent.com urls:
+      //   https://raw.githubusercontent.com/user/repo/branch/path -> https://raw.githack.com/user/repo/branch/path
+      // If we only have html_url (github blob), fallback to htmlpreview:
+      //   https://github.com/user/repo/blob/branch/path -> https://htmlpreview.github.io/?https://github.com/...
+      function getRenderableUrl(downloadUrl, htmlUrl) {
+        if (downloadUrl && downloadUrl.startsWith('https://raw.githubusercontent.com/')) {
+          // raw.githack.com mirrors raw.githubusercontent and serves with correct headers for rendering
+          return downloadUrl.replace('https://raw.githubusercontent.com/', 'https://raw.githack.com/');
+        }
+        if (htmlUrl) {
+          return 'https://htmlpreview.github.io/?' + htmlUrl;
+        }
+        // As a last resort return downloadUrl or htmlUrl directly
+        return downloadUrl || htmlUrl || '';
       }
 
       // Build UI entry
-      function addGameEntry(displayName, folderPath, indexUrl, romPaths) {
+      function addGameEntry(displayName, folderPath, renderUrl, romPaths) {
         const wrapper = document.createElement('div');
         wrapper.className = 'game';
 
@@ -132,9 +146,10 @@
         const actions = document.createElement('div');
         actions.style.display = 'flex';
         actions.style.gap = '0.5rem';
+
         const openLink = document.createElement('a');
         openLink.className = 'small';
-        openLink.href = indexUrl;
+        openLink.href = renderUrl;
         openLink.textContent = 'Open';
         openLink.target = '_blank';
         openLink.rel = 'noopener noreferrer';
@@ -150,9 +165,9 @@
 
         listEl.appendChild(wrapper);
 
-        // add to select
+        // add to select (use renderUrl as value)
         const opt = document.createElement('option');
-        opt.value = indexUrl;
+        opt.value = renderUrl;
         opt.textContent = displayName + (folderPath ? ` — ${folderPath}` : ' — (root)');
         selectEl.appendChild(opt);
       }
@@ -161,7 +176,7 @@
       (async function main() {
         try {
           statusEl.textContent = 'Fetching repository tree from GitHub…';
-          const paths = await fetchTree();
+          const { paths, ref } = await fetchTree();
           statusEl.textContent = 'Searching for .z64 ROM files…';
           // Find .z64 files
           const romPaths = paths.filter(p => p.toLowerCase().endsWith('.z64'));
@@ -181,18 +196,21 @@
 
           statusEl.textContent = `Found ${romPaths.length} .z64 file(s) in ${folderMap.size} folder(s). Locating index.html for each folder…`;
 
-          // For each folder try to get index.html download_url
+          // For each folder try to get index.html info
           const folderEntries = Array.from(folderMap.entries());
           for (const [folder, romNames] of folderEntries) {
-            let indexUrl = await getIndexHtmlDownloadUrl(folder);
-            if (!indexUrl) {
-              // No index.html in folder: skip (or optionally point to root index)
-              // We'll skip since user asked to access index.html where the game works.
-              console.warn(`No index.html found in folder: "${folder}"`);
+            const info = await getIndexHtmlInfo(folder);
+            if (!info) {
+              console.warn(`No index.html found in folder: "${folder}" — skipping.`);
+              continue;
+            }
+            const renderUrl = getRenderableUrl(info.download_url, info.html_url);
+            if (!renderUrl) {
+              console.warn(`Could not build render URL for folder: "${folder}"`);
               continue;
             }
             const displayName = folder ? folder.split('/').pop() : repo;
-            addGameEntry(displayName, folder, indexUrl, romNames);
+            addGameEntry(displayName, folder, renderUrl, romNames);
           }
 
           // If nothing had an index.html
@@ -202,7 +220,6 @@
           }
 
           statusEl.textContent = 'Ready — select a game and click "Open" or "Open in iframe".';
-          // select first option by default
           selectEl.selectedIndex = 0;
 
         } catch (err) {
