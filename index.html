@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>N64 Web Emulator — Auto-discover .z64 games</title>
+  <style>
+    :root { --bg:#f7f7f7; --card:#fff; --muted:#666; --accent:#0366d6; }
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial; margin:0; padding:1.25rem; background:var(--bg); color:#111; }
+    .container { max-width:980px; margin:0 auto; background:var(--card); padding:1rem 1.25rem; border-radius:8px; box-shadow:0 8px 30px rgba(0,0,0,0.06); }
+    header { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1rem; }
+    h1 { font-size:1.05rem; margin:0; }
+    .controls { display:flex; gap:0.5rem; align-items:center; }
+    select, button { font-size:0.95rem; padding:0.45rem 0.6rem; }
+    .hint { color:var(--muted); font-size:0.9rem; margin-top:0.25rem; }
+    .list { margin-top:1rem; }
+    .game { display:flex; gap:0.75rem; align-items:center; padding:0.5rem; border-radius:6px; border:1px solid rgba(0,0,0,0.04); background:#fff; margin-bottom:0.5rem; }
+    .game .title { font-weight:600; }
+    .game .path { color:var(--muted); font-size:0.9rem; word-break:break-all; }
+    iframe { width:100%; height:640px; border:1px solid #ddd; margin-top:1rem; border-radius:6px; background:#fff; }
+    .status { color:var(--muted); font-size:0.95rem; margin-left:0.5rem; }
+    .small { font-size:0.9rem; color:var(--muted); }
+    .notice { margin-top:0.6rem; padding:0.6rem; background:#fff8e6; border:1px solid #ffe08a; border-radius:6px; color:#5d3b00; }
+    .error { color:#a12; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>N64 Web Emulator — Auto-discover .z64 games</h1>
+        <div class="hint">This page looks through the repository and finds folders that contain .z64 ROM files, then links to that folder's index.html (where the emulator/game page should live).</div>
+      </div>
+
+      <div class="controls" aria-hidden="false">
+        <label for="gameSelect" style="display:none">Select game</label>
+        <select id="gameSelect" aria-label="Select discovered game"></select>
+        <button id="openBtn">Open</button>
+        <button id="openIframeBtn">Open in iframe</button>
+      </div>
+    </header>
+
+    <div id="status" class="small">Loading repository tree…</div>
+
+    <div id="gamesList" class="list" aria-live="polite"></div>
+
+    <div id="iframeWrap" style="display:none">
+      <iframe id="gameFrame" title="Game iframe"></iframe>
+    </div>
+
+    <div class="notice small">
+      Notes:
+      <ul>
+        <li>This file queries the GitHub API to discover .z64 files in the repository <strong>scAlopen/N64-Web-Emulator</strong>. The API is used only to find file paths and locate the corresponding index.html pages.</li>
+        <li>Unauthenticated GitHub API requests are limited (60 requests/hour). If you hit limits, add a server-side manifest or a static JSON listing of ROMs to avoid API calls.</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      // Repository to scan
+      const owner = 'scAlopen';
+      const repo  = 'N64-Web-Emulator';
+      const apiBase = `https://api.github.com/repos/${owner}/${repo}`;
+
+      // UI elements
+      const statusEl = document.getElementById('status');
+      const listEl = document.getElementById('gamesList');
+      const selectEl = document.getElementById('gameSelect');
+      const openBtn = document.getElementById('openBtn');
+      const openIframeBtn = document.getElementById('openIframeBtn');
+      const iframeWrap = document.getElementById('iframeWrap');
+      const iframe = document.getElementById('gameFrame');
+
+      // Helper: fetch Git tree (try HEAD then main)
+      async function fetchTree() {
+        const candidates = ['HEAD', 'main', 'master'];
+        for (const ref of candidates) {
+          try {
+            const url = `${apiBase}/git/trees/${encodeURIComponent(ref)}?recursive=1`;
+            const res = await fetch(url, { headers: { Accept: 'application/vnd.github.v3+json' }});
+            if (!res.ok) {
+              // try next ref
+              continue;
+            }
+            const json = await res.json();
+            if (json && Array.isArray(json.tree)) return json.tree.map(e => e.path);
+          } catch (err) {
+            // continue to next ref
+          }
+        }
+        throw new Error('Unable to fetch repository tree (no accessible HEAD/main/master).');
+      }
+
+      // Helper: check for index.html in a folder and return its raw download_url via contents API
+      async function getIndexHtmlDownloadUrl(folder) {
+        // folder: '' (root) or 'dir/subdir'
+        const indexPath = folder ? `${folder}/index.html` : 'index.html';
+        const url = `${apiBase}/contents/${encodeURIComponent(indexPath)}`;
+        const res = await fetch(url, { headers: { Accept: 'application/vnd.github.v3+json' }});
+        if (!res.ok) return null;
+        const json = await res.json();
+        // 'download_url' is the raw URL you can open directly in the browser
+        return json.download_url || null;
+      }
+
+      // Build UI entry
+      function addGameEntry(displayName, folderPath, indexUrl, romPaths) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'game';
+
+        const info = document.createElement('div');
+        info.style.flex = '1';
+
+        const title = document.createElement('div');
+        title.className = 'title';
+        title.textContent = displayName;
+
+        const pathEl = document.createElement('div');
+        pathEl.className = 'path';
+        pathEl.textContent = folderPath || '(root)';
+
+        const romsEl = document.createElement('div');
+        romsEl.className = 'small';
+        romsEl.textContent = 'ROM(s): ' + romPaths.join(', ');
+
+        info.appendChild(title);
+        info.appendChild(pathEl);
+        info.appendChild(romsEl);
+
+        const actions = document.createElement('div');
+        actions.style.display = 'flex';
+        actions.style.gap = '0.5rem';
+        const openLink = document.createElement('a');
+        openLink.className = 'small';
+        openLink.href = indexUrl;
+        openLink.textContent = 'Open';
+        openLink.target = '_blank';
+        openLink.rel = 'noopener noreferrer';
+        openLink.style.textDecoration = 'none';
+        openLink.style.padding = '0.35rem 0.6rem';
+        openLink.style.border = '1px solid rgba(0,0,0,0.06)';
+        openLink.style.borderRadius = '6px';
+        openLink.style.background = '#fbfbfb';
+        actions.appendChild(openLink);
+
+        wrapper.appendChild(info);
+        wrapper.appendChild(actions);
+
+        listEl.appendChild(wrapper);
+
+        // add to select
+        const opt = document.createElement('option');
+        opt.value = indexUrl;
+        opt.textContent = displayName + (folderPath ? ` — ${folderPath}` : ' — (root)');
+        selectEl.appendChild(opt);
+      }
+
+      // Main
+      (async function main() {
+        try {
+          statusEl.textContent = 'Fetching repository tree from GitHub…';
+          const paths = await fetchTree();
+          statusEl.textContent = 'Searching for .z64 ROM files…';
+          // Find .z64 files
+          const romPaths = paths.filter(p => p.toLowerCase().endsWith('.z64'));
+          if (romPaths.length === 0) {
+            statusEl.innerHTML = '<span class="error">No .z64 files found in repository.</span>';
+            return;
+          }
+
+          // Group by containing folder
+          const folderMap = new Map(); // folder -> [romPaths]
+          romPaths.forEach(p => {
+            const idx = p.lastIndexOf('/');
+            const folder = idx === -1 ? '' : p.substring(0, idx);
+            if (!folderMap.has(folder)) folderMap.set(folder, []);
+            folderMap.get(folder).push(p.split('/').pop());
+          });
+
+          statusEl.textContent = `Found ${romPaths.length} .z64 file(s) in ${folderMap.size} folder(s). Locating index.html for each folder…`;
+
+          // For each folder try to get index.html download_url
+          const folderEntries = Array.from(folderMap.entries());
+          for (const [folder, romNames] of folderEntries) {
+            let indexUrl = await getIndexHtmlDownloadUrl(folder);
+            if (!indexUrl) {
+              // No index.html in folder: skip (or optionally point to root index)
+              // We'll skip since user asked to access index.html where the game works.
+              console.warn(`No index.html found in folder: "${folder}"`);
+              continue;
+            }
+            const displayName = folder ? folder.split('/').pop() : repo;
+            addGameEntry(displayName, folder, indexUrl, romNames);
+          }
+
+          // If nothing had an index.html
+          if (!selectEl.options.length) {
+            statusEl.innerHTML = '<span class="error">No index.html pages were found next to the .z64 files. Ensure each game folder contains an index.html that loads the local .z64 ROM.</span>';
+            return;
+          }
+
+          statusEl.textContent = 'Ready — select a game and click "Open" or "Open in iframe".';
+          // select first option by default
+          selectEl.selectedIndex = 0;
+
+        } catch (err) {
+          console.error(err);
+          statusEl.innerHTML = `<span class="error">Error: ${err.message}</span>`;
+        }
+      })();
+
+      // Button actions
+      openBtn.addEventListener('click', () => {
+        const url = selectEl.value;
+        if (!url) return alert('No game selected.');
+        window.open(url, '_blank', 'noopener');
+      });
+
+      openIframeBtn.addEventListener('click', () => {
+        const url = selectEl.value;
+        if (!url) return alert('No game selected.');
+        iframe.src = url;
+        iframeWrap.style.display = '';
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      });
+
+    })();
+  </script>
+</body>
+</html>
