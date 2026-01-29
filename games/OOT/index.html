@@ -1,152 +1,69 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
-    <title>The Legend of Zelda: Ocarina of Time</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Zelda OOT</title>
     <style>
-        body { 
-            margin: 0; 
-            background: #000; 
+        body {
+            margin: 0;
+            background: #000;
             display: flex;
             justify-content: center;
             align-items: center;
+            min-height: 100vh;
+        }
+        #game {
+            width: 100%;
+            max-width: 100vw;
             height: 100vh;
-            overflow: hidden;
         }
-        #game-container { 
-            width: 100%; 
-            height: 100vh; 
-            position: relative;
-        }
-        .loading, .error, .debug {
+        #status {
+            position: fixed;
+            top: 20px;
+            left: 20px;
             color: white;
-            position: absolute;
-            left: 50%;
-            transform: translateX(-50%);
-            text-align: center;
-            z-index: 10;
-        }
-        .loading {
-            top: 40%;
-            font-size: 18px;
-        }
-        .error {
-            top: 30%;
-            color: #ff6b6b;
-            padding: 20px;
-            background-color: rgba(0, 0, 0, 0.9);
-            border-radius: 8px;
-            max-width: 90%;
-            display: none;
-        }
-        .debug {
-            bottom: 10px;
-            font-size: 11px;
-            color: #aaa;
-            max-width: 95%;
+            background: rgba(0,0,0,0.8);
             padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 1000;
         }
     </style>
 </head>
 <body>
-    <div id="game-container">
-        <div class="loading" id="loading">Loading emulator...<br><small>Please wait</small></div>
-        <div class="error" id="error">
-            <h3>Error</h3>
-            <p id="error-message"></p>
-        </div>
-        <div class="debug" id="debug">Initializing...</div>
-        <div id="game"></div>
-    </div>
-
+    <div id="status">Loading...</div>
+    <div id="game"></div>
+    
     <script>
-        // Debug logger
-        function log(message) {
-            console.log(message);
-            document.getElementById('debug').innerHTML = message;
-        }
+        document.getElementById('status').textContent = 'Step 1: Configuring...';
         
-        // Error handler
-        function showError(message) {
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('error').style.display = 'block';
-            document.getElementById('error-message').innerHTML = message;
-        }
-
-        // Test if ROM file exists
-        async function checkROMExists() {
-            const romPath = 'The Legend of Zelda Ocarina of Time.z64';
-            log('Checking if ROM exists at: ' + romPath);
-            
-            try {
-                const response = await fetch(romPath, { method: 'HEAD' });
-                if (response.ok) {
-                    log('ROM file found! Size: ' + response.headers.get('content-length') + ' bytes');
-                    return true;
-                } else {
-                    showError('ROM file not found!<br><br>Make sure "The Legend of Zelda Ocarina of Time.z64" is in the same folder as index.html<br><br>Current path: ' + romPath);
-                    return false;
-                }
-            } catch (e) {
-                showError('Cannot access ROM file: ' + e.message + '<br><br>Make sure the file exists and is accessible.');
-                return false;
-            }
-        }
-
-        // Start emulator
-        async function startEmulator() {
-            // First check if ROM exists
-            const romExists = await checkROMExists();
-            if (!romExists) return;
-
-            log('Configuring emulator...');
-            
-            // Configure emulator
-            window.EJS_player = '#game';
-            window.EJS_core = 'n64';
-            window.EJS_gameName = 'Ocarina of Time';
-            window.EJS_gameUrl = 'The Legend of Zelda Ocarina of Time.z64';
-            window.EJS_pathtodata = 'https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/';
-            window.EJS_startOnLoaded = true;
-
-            log('Loading EmulatorJS from CDN...');
-
-            // Load the emulator script
-            const script = document.createElement('script');
-            script.src = 'https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/loader.js';
-            script.onerror = function() {
-                showError('Failed to load EmulatorJS from CDN.<br>Check your internet connection.');
-            };
-            script.onload = function() {
-                log('EmulatorJS loaded. Starting game...');
-                
-                // Monitor for game start
+        // Set up configuration
+        window.EJS_player = '#game';
+        window.EJS_core = 'n64';
+        window.EJS_gameUrl = 'zelda-oot.z64';  // RENAME YOUR ROM TO THIS!
+        window.EJS_pathtodata = 'https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/';
+        
+        document.getElementById('status').textContent = 'Step 2: Loading EmulatorJS...';
+    </script>
+    
+    <script src="https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/loader.js" 
+            onload="document.getElementById('status').textContent = 'Step 3: EmulatorJS loaded! Starting game...';"
+            onerror="document.getElementById('status').textContent = 'ERROR: Could not load EmulatorJS from CDN. Check internet connection.';">
+    </script>
+    
+    <script>
+        // Check after 30 seconds
+        setTimeout(function() {
+            if (document.querySelector('#game canvas')) {
+                document.getElementById('status').textContent = 'Game running!';
                 setTimeout(function() {
-                    const canvas = document.querySelector('#game canvas');
-                    if (!canvas) {
-                        showError('Game failed to start.<br><br>N64 emulation is very demanding and may not work on iPad.<br><br>Recommended: Use Delta Emulator app from the App Store instead.');
-                    } else {
-                        log('Game is running!');
-                        document.getElementById('loading').style.display = 'none';
-                    }
-                }, 25000);
-            };
-            document.head.appendChild(script);
-        }
-
-        // Start when page loads
-        window.addEventListener('load', startEmulator);
-
-        // Touch to enable audio on iOS
-        document.addEventListener('touchstart', function() {
-            try {
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                if (audioContext.state === 'suspended') {
-                    audioContext.resume();
-                }
-            } catch(e) {}
-        }, { once: true });
+                    document.getElementById('status').style.display = 'none';
+                }, 3000);
+            } else {
+                document.getElementById('status').textContent = 'FAILED: N64 emulation does not work well on iPad. Use Delta Emulator app instead.';
+            }
+        }, 30000);
     </script>
 </body>
 </html>
