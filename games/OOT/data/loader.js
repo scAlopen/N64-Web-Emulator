@@ -1,12 +1,12 @@
 (async function() {
     var VERSION = 1.1;
-    if (window.location && ['localhost', 'https://n64webport.netlify.app/' ,'127.0.0.1'].includes(location.hostname)) {
+    if (window.location && ['localhost', '127.0.0.1'].includes(location.hostname)) {
         fetch('https://raw.githack.com/ethanaobrien/emulatorjs/main/data/version.json').then(response => {
             if (response.ok) {
                 response.text().then(body => {
                     var version = JSON.parse(body);
                     if (VERSION < version.current_version) {
-                        console.log('Using emulatorjs version ' + usingVersion + ' but the newest version is ' + version.current_version + 'open https://github.com/ethanaobrien/emulatorjs to update');
+                        console.log('Using emulatorjs version ' + usingVersion + ' but the newest version is ' + version.current_version + '\nopen https://github.com/ethanaobrien/emulatorjs to update');
                     }
                 })
             }
@@ -33,6 +33,8 @@
     }
     if ('undefined' != typeof EJS_DEBUG_XX && true === EJS_DEBUG_XX) {
         await loadScript('emu-main.js');
+        await loadScript('emulator.js');
+    } else {
         await loadScript('emu-min.js');
     }
     var config = {};
