@@ -20,60 +20,91 @@
         }
         #status {
             position: fixed;
-            top: 20px;
-            left: 20px;
+            top: 10px;
+            left: 10px;
+            right: 10px;
             color: white;
-            background: rgba(0,0,0,0.8);
-            padding: 10px;
+            background: rgba(0,0,0,0.9);
+            padding: 15px;
             font-family: monospace;
-            font-size: 12px;
+            font-size: 11px;
             z-index: 1000;
-            max-width: 90%;
+            max-height: 200px;
+            overflow-y: auto;
         }
     </style>
 </head>
 <body>
-    <div id="status">Loading...</div>
+    <div id="status">Initializing...</div>
     <div id="game"></div>
     
     <script>
-        document.getElementById('status').textContent = 'Step 1: Configuring...';
+        let logs = [];
         
-        // Set up configuration with Catbox link
+        function addLog(msg) {
+            console.log(msg);
+            logs.push(new Date().toLocaleTimeString() + ': ' + msg);
+            document.getElementById('status').innerHTML = logs.join('<br>');
+        }
+        
+        // Capture console errors
+        window.onerror = function(msg, url, line) {
+            addLog('ERROR: ' + msg + ' (line ' + line + ')');
+        };
+        
+        addLog('Starting...');
+        
+        // Set up configuration
         window.EJS_player = '#game';
         window.EJS_core = 'n64';
         window.EJS_gameUrl = 'https://files.catbox.moe/6l3no3.z64';
         window.EJS_pathtodata = 'https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/';
         
-        document.getElementById('status').textContent = 'Step 2: Loading EmulatorJS...';
+        addLog('Config set: N64 core, ROM from Catbox');
+        
+        // Monitor the game div for changes
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.addedNodes.length > 0) {
+                    addLog('Element added to #game');
+                    const canvas = document.querySelector('#game canvas');
+                    if (canvas) {
+                        addLog('✓ Canvas detected! Game may be starting...');
+                    }
+                }
+            });
+        });
+        
+        observer.observe(document.getElementById('game'), { childList: true, subtree: true });
+        
+        addLog('Loading EmulatorJS from CDN...');
     </script>
     
     <script src="https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/loader.js" 
-            onload="document.getElementById('status').textContent = 'Step 3: EmulatorJS loaded! Downloading ROM...';"
-            onerror="document.getElementById('status').textContent = 'ERROR: Could not load EmulatorJS.';">
+            onload="addLog('✓ EmulatorJS script loaded');"
+            onerror="addLog('✗ FAILED to load EmulatorJS script');">
     </script>
     
     <script>
-        // Check after 60 seconds (ROM download + loading time)
+        // Check progress at intervals
+        setTimeout(() => addLog('Checkpoint: 15 seconds...'), 15000);
+        setTimeout(() => addLog('Checkpoint: 30 seconds...'), 30000);
+        setTimeout(() => addLog('Checkpoint: 45 seconds...'), 45000);
+        setTimeout(() => addLog('Checkpoint: 60 seconds...'), 60000);
+        
         setTimeout(function() {
             const canvas = document.querySelector('#game canvas');
             if (canvas) {
-                document.getElementById('status').textContent = 'Game running! (Performance may be slow on iPad)';
-                setTimeout(function() {
+                addLog('✓✓✓ SUCCESS! Game canvas found!');
+                setTimeout(() => {
                     document.getElementById('status').style.display = 'none';
-                }, 5000);
+                }, 3000);
             } else {
-                document.getElementById('status').textContent = 'Still loading... N64 emulation on iPad is very slow. Please wait up to 2 minutes...';
-                
-                // Check again after another minute
-                setTimeout(function() {
-                    const canvas2 = document.querySelector('#game canvas');
-                    if (!canvas2) {
-                        document.getElementById('status').innerHTML = 'FAILED: N64 emulation may not work on iPad Safari.<br>Try using Chrome or consider Delta Emulator app.';
-                    }
-                }, 60000);
+                addLog('✗ No canvas after 90 seconds');
+                addLog('DIAGNOSIS: iPad Safari cannot handle N64 emulation');
+                addLog('SOLUTION: Use Delta Emulator app from App Store');
             }
-        }, 60000);
+        }, 90000);
     </script>
 </body>
 </html>
