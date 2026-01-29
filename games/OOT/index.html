@@ -13,9 +13,6 @@
             align-items: center;
             height: 100vh;
             overflow: hidden;
-            -webkit-touch-callout: none;
-            -webkit-user-select: none;
-            user-select: none;
         }
         #game-container { 
             width: 100%; 
@@ -32,58 +29,38 @@
         }
         .loading {
             top: 40%;
-            font-size: 24px;
+            font-size: 18px;
         }
         .error {
-            top: 40%;
+            top: 30%;
             color: #ff6b6b;
             padding: 20px;
-            background-color: rgba(0, 0, 0, 0.8);
+            background-color: rgba(0, 0, 0, 0.9);
             border-radius: 8px;
-            max-width: 80%;
+            max-width: 90%;
             display: none;
         }
         .debug {
             bottom: 10px;
-            font-size: 12px;
+            font-size: 11px;
             color: #aaa;
-            max-width: 90%;
-        }
-        .controls-hint {
-            position: absolute;
-            bottom: 60px;
-            left: 0;
-            right: 0;
-            color: white;
-            text-align: center;
-            font-size: 14px;
-            opacity: 0.7;
-            z-index: 10;
+            max-width: 95%;
+            padding: 10px;
         }
     </style>
 </head>
 <body>
     <div id="game-container">
-        <div class="loading" id="loading">Loading game...<br><small>This may take a moment</small></div>
+        <div class="loading" id="loading">Loading emulator...<br><small>Please wait</small></div>
         <div class="error" id="error">
-            <h3>Game Failed to Load</h3>
-            <p id="error-message">Unknown error occurred</p>
-            <button id="retry-btn" style="margin-top: 10px; padding: 8px 16px; background: #4285f4; color: white; border: none; border-radius: 4px; cursor: pointer;">Retry</button>
+            <h3>Error</h3>
+            <p id="error-message"></p>
         </div>
-        <div class="debug" id="debug"></div>
-        <div class="controls-hint" id="controls-hint">Tap the game to enable controls</div>
+        <div class="debug" id="debug">Initializing...</div>
         <div id="game"></div>
     </div>
 
     <script>
-        // Configure emulator BEFORE loading
-        EJS_player = '#game';
-        EJS_core = 'n64';
-        EJS_gameName = 'Ocarina of Time';
-        EJS_gameUrl = 'The%20Legend%20of%20Zelda%20Ocarina%20of%20Time.z64';
-        EJS_pathtodata = 'https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/';
-        EJS_startOnLoaded = true;
-        
         // Debug logger
         function log(message) {
             console.log(message);
@@ -94,43 +71,82 @@
         function showError(message) {
             document.getElementById('loading').style.display = 'none';
             document.getElementById('error').style.display = 'block';
-            document.getElementById('error-message').textContent = message;
+            document.getElementById('error-message').innerHTML = message;
         }
-        
-        log('Loading emulator from CDN...');
-        
-        // Check if game loads after timeout
-        setTimeout(function() {
-            const canvas = document.querySelector('#game canvas');
-            if (!canvas) {
-                showError('Game failed to initialize. N64 emulation may not work well on iPad. Consider using the Delta Emulator app instead.');
-            } else {
-                log('Game loaded successfully!');
-                document.getElementById('loading').style.display = 'none';
+
+        // Test if ROM file exists
+        async function checkROMExists() {
+            const romPath = 'The Legend of Zelda Ocarina of Time.z64';
+            log('Checking if ROM exists at: ' + romPath);
+            
+            try {
+                const response = await fetch(romPath, { method: 'HEAD' });
+                if (response.ok) {
+                    log('ROM file found! Size: ' + response.headers.get('content-length') + ' bytes');
+                    return true;
+                } else {
+                    showError('ROM file not found!<br><br>Make sure "The Legend of Zelda Ocarina of Time.z64" is in the same folder as index.html<br><br>Current path: ' + romPath);
+                    return false;
+                }
+            } catch (e) {
+                showError('Cannot access ROM file: ' + e.message + '<br><br>Make sure the file exists and is accessible.');
+                return false;
+            }
+        }
+
+        // Start emulator
+        async function startEmulator() {
+            // First check if ROM exists
+            const romExists = await checkROMExists();
+            if (!romExists) return;
+
+            log('Configuring emulator...');
+            
+            // Configure emulator
+            window.EJS_player = '#game';
+            window.EJS_core = 'n64';
+            window.EJS_gameName = 'Ocarina of Time';
+            window.EJS_gameUrl = 'The Legend of Zelda Ocarina of Time.z64';
+            window.EJS_pathtodata = 'https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/';
+            window.EJS_startOnLoaded = true;
+
+            log('Loading EmulatorJS from CDN...');
+
+            // Load the emulator script
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/loader.js';
+            script.onerror = function() {
+                showError('Failed to load EmulatorJS from CDN.<br>Check your internet connection.');
+            };
+            script.onload = function() {
+                log('EmulatorJS loaded. Starting game...');
                 
-                // Hide controls hint after 5 seconds
+                // Monitor for game start
                 setTimeout(function() {
-                    document.getElementById('controls-hint').style.display = 'none';
-                }, 5000);
-            }
-        }, 20000); // 20 second timeout for iPad
-        
-        // Retry button
-        document.getElementById('retry-btn').addEventListener('click', function() {
-            location.reload();
-        });
-        
-        // Add touch event listener to enable audio on iOS
+                    const canvas = document.querySelector('#game canvas');
+                    if (!canvas) {
+                        showError('Game failed to start.<br><br>N64 emulation is very demanding and may not work on iPad.<br><br>Recommended: Use Delta Emulator app from the App Store instead.');
+                    } else {
+                        log('Game is running!');
+                        document.getElementById('loading').style.display = 'none';
+                    }
+                }, 25000);
+            };
+            document.head.appendChild(script);
+        }
+
+        // Start when page loads
+        window.addEventListener('load', startEmulator);
+
+        // Touch to enable audio on iOS
         document.addEventListener('touchstart', function() {
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            if (audioContext.state === 'suspended') {
-                audioContext.resume();
-            }
-            document.getElementById('controls-hint').style.display = 'none';
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+            } catch(e) {}
         }, { once: true });
     </script>
-    
-    <!-- Load EmulatorJS from CDN -->
-    <script src="https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/loader.js"></script>
 </body>
 </html>
