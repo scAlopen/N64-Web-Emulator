@@ -59,7 +59,8 @@
         // Configure the emulator
         EJS_player = '#game';
         EJS_gameName = 'Ocarina of Time';
-        EJS_gameUrl = './The Legend of Zelda Ocarina of Time.z64'; // Update with your actual ROM filename
+        // Use raw.githack.com to bypass CORS restrictions
+        EJS_gameUrl = 'https://raw.githack.com/games/OOT/The Legend of Zelda Ocarina of Time.z64';
         EJS_pathtodata = 'https://cdn.jsdelivr.net/gh/ethanaobrien/emulatorjs@master/data/';
         EJS_startOnLoaded = true;
         EJS_gameID = 1;
@@ -86,4 +87,3 @@
     </script>
 </body>
 </html>
-
