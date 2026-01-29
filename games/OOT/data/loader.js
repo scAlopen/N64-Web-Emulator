@@ -1,6 +1,6 @@
 (async function() {
     var VERSION = 1.1;
-    if (window.location && ['localhost', '127.0.0.1'].includes(location.hostname)) {
+    if (window.location && ['localhost', 'https://n64webport.netlify.app/' ,'127.0.0.1'].includes(location.hostname)) {
         fetch('https://raw.githack.com/ethanaobrien/emulatorjs/main/data/version.json').then(response => {
             if (response.ok) {
                 response.text().then(body => {
