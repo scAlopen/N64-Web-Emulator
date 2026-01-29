@@ -4,85 +4,47 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>The Legend of Zelda: Ocarina of Time</title>
-    <script src="https://cdn.jsdelivr.net/gh/ethanaobrien/emulatorjs@master/data/loader.js"></script>
+    <script src="data/loader.js"></script>
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: #000;
-            color: #fff;
-            font-family: Arial, sans-serif;
-        }
-        #game {
-            width: 100%;
+        body { 
+            margin: 0; 
+            background: #000; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
             height: 100vh;
+            overflow: hidden;
         }
-        .error-message {
-            color: #ff6b6b;
-            padding: 20px;
-            text-align: center;
-            display: none;
-            background-color: rgba(0, 0, 0, 0.8);
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            border-radius: 8px;
-            max-width: 80%;
+        #game { 
+            width: 100%; 
+            height: 100vh; 
+            max-width: 100%;
+            max-height: 100%;
         }
-        .loading-message {
-            color: #fff;
+        .loading {
+            color: white;
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
+            font-size: 24px;
         }
     </style>
 </head>
 <body>
-    <div id="game">
-        <div class="loading-message">Loading game...</div>
-        <div class="error-message" id="error-container">
-            <h3>Network Error</h3>
-            <p>Failed to load the game ROM. This could be due to:</p>
-            <ul style="text-align: left; display: inline-block;">
-                <li>Missing ROM file</li>
-                <li>Incorrect ROM file path</li>
-                <li>CORS restrictions</li>
-            </ul>
-            <p>Please ensure the ROM file is properly uploaded to the repository.</p>
-        </div>
-    </div>
-    
+    <div class="loading" id="loading">Loading game...</div>
+    <div id="game"></div>
     <script>
-        // Configure the emulator
         EJS_player = '#game';
         EJS_gameName = 'Ocarina of Time';
-        // Use raw.githack.com to bypass CORS restrictions
-        EJS_gameUrl = 'https://raw.githack.com/games/OOT/The Legend of Zelda Ocarina of Time.z64';
-        EJS_pathtodata = 'https://cdn.jsdelivr.net/gh/ethanaobrien/emulatorjs@master/data/';
+        // Updated with the exact filename including spaces
+        EJS_gameUrl = 'The Legend of Zelda Ocarina of Time.z64';
+        EJS_pathtodata = 'data/'; // Use your local data folder
         EJS_startOnLoaded = true;
         EJS_gameID = 1;
         
-        // Handle network errors
-        window.addEventListener('error', function(e) {
-            console.error('Error loading game:', e);
-            document.querySelector('.loading-message').style.display = 'none';
-            document.getElementById('error-container').style.display = 'block';
-        });
-        
-        // Check if ROM loads successfully
+        // Hide loading message when game starts
         window.addEventListener('load', function() {
             setTimeout(function() {
-                const gameElement = document.querySelector('#game canvas, #game div');
-                if (gameElement && gameElement.style.display !== 'none') {
-                    document.querySelector('.loading-message').style.display = 'none';
-                } else {
-                    document.querySelector('.loading-message').style.display = 'none';
-                    document.getElementById('error-container').style.display = 'block';
-                }
-            }, 5000);
+                document.getElementById('loading').style.display = 'none';
+            }, 3000);
         });
     </script>
 </body>
