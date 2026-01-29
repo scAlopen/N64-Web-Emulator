@@ -38,32 +38,32 @@
     <script>
         document.getElementById('status').textContent = 'Step 1: Configuring...';
         
-        // Set up configuration
+        // Set up configuration with Google Drive link
         window.EJS_player = '#game';
         window.EJS_core = 'n64';
-        window.EJS_gameUrl = 'zelda-oot.z64';  // RENAME YOUR ROM TO THIS!
+        window.EJS_gameUrl = 'https://drive.google.com/uc?export=download&id=1YVm0_bqKUsVFHKYm9R6XQTWBKHuAmK4Z';
         window.EJS_pathtodata = 'https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/';
         
         document.getElementById('status').textContent = 'Step 2: Loading EmulatorJS...';
     </script>
     
     <script src="https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/loader.js" 
-            onload="document.getElementById('status').textContent = 'Step 3: EmulatorJS loaded! Starting game...';"
-            onerror="document.getElementById('status').textContent = 'ERROR: Could not load EmulatorJS from CDN. Check internet connection.';">
+            onload="document.getElementById('status').textContent = 'Step 3: EmulatorJS loaded! Downloading ROM from Google Drive...';"
+            onerror="document.getElementById('status').textContent = 'ERROR: Could not load EmulatorJS from CDN.';">
     </script>
     
     <script>
-        // Check after 30 seconds
+        // Check after 45 seconds (ROM download takes longer)
         setTimeout(function() {
             if (document.querySelector('#game canvas')) {
-                document.getElementById('status').textContent = 'Game running!';
+                document.getElementById('status').textContent = 'Game running! (May be slow on iPad)';
                 setTimeout(function() {
                     document.getElementById('status').style.display = 'none';
-                }, 3000);
+                }, 5000);
             } else {
-                document.getElementById('status').textContent = 'FAILED: N64 emulation does not work well on iPad. Use Delta Emulator app instead.';
+                document.getElementById('status').textContent = 'Loading... N64 games take 30-60 seconds on mobile. Please wait...';
             }
-        }, 30000);
+        }, 45000);
     </script>
 </body>
 </html>
