@@ -128,6 +128,14 @@
                 EJS_pathtodata = 'data/';
                 EJS_startOnLoaded = true;
                 EJS_gameID = 1;
+                // Configure emulator with URL encoded ROM path
+                EJS_player = '#game';
+                EJS_core = 'n64';  // ← ADD THIS LINE - CRITICAL!
+                EJS_gameName = 'Ocarina of Time';
+                EJS_gameUrl = 'The%20Legend%20of%20Zelda%20Ocarina%20of%20Time.z64';  // ← Properly encoded
+                EJS_pathtodata = 'data/';
+                EJS_startOnLoaded = true;
+                EJS_gameID = 1;
                 
                 // iPad specific settings
                 EJS_Buttons = {
@@ -194,3 +202,4 @@
     </script>
 </body>
 </html>
+
