@@ -72,9 +72,18 @@
         </div>
         <div class="debug" id="debug"></div>
         <div class="controls-hint" id="controls-hint">Tap the game to enable controls</div>
+        <div id="game"></div>
     </div>
 
     <script>
+        // Configure emulator BEFORE loading
+        EJS_player = '#game';
+        EJS_core = 'n64';
+        EJS_gameName = 'Ocarina of Time';
+        EJS_gameUrl = 'The%20Legend%20of%20Zelda%20Ocarina%20of%20Time.z64';
+        EJS_pathtodata = 'https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/';
+        EJS_startOnLoaded = true;
+        
         // Debug logger
         function log(message) {
             console.log(message);
@@ -88,108 +97,28 @@
             document.getElementById('error-message').textContent = message;
         }
         
-        // Load emulator script with error handling
-        function loadEmulator() {
-            log('Loading emulator...');
-            const script = document.createElement('script');
-            script.src = 'data/loader.js';
-            script.onerror = function() {
-                showError('Failed to load emulator from data/loader.js. Check if the file exists and is accessible.');
-            };
-            script.onload = function() {
-                log('Emulator loaded, initializing game...');
-                setTimeout(initGame, 1000);
-            };
-            document.head.appendChild(script);
-        }
+        log('Loading emulator from CDN...');
         
-        // Initialize game
-        function initGame() {
-            try {
-                // Check if EJS is defined
-                if (typeof EJS === 'undefined') {
-                    showError('EmulatorJS not loaded properly. Check data/loader.js');
-                    return;
-                }
+        // Check if game loads after timeout
+        setTimeout(function() {
+            const canvas = document.querySelector('#game canvas');
+            if (!canvas) {
+                showError('Game failed to initialize. N64 emulation may not work well on iPad. Consider using the Delta Emulator app instead.');
+            } else {
+                log('Game loaded successfully!');
+                document.getElementById('loading').style.display = 'none';
                 
-                log('Starting game...');
-                
-                // Create game div
-                const gameDiv = document.createElement('div');
-                gameDiv.id = 'game';
-                gameDiv.style.width = '100%';
-                gameDiv.style.height = '100%';
-                document.getElementById('game-container').appendChild(gameDiv);
-                
-                // Configure emulator with URL encoded ROM path
-                EJS_player = '#game';
-                EJS_gameName = 'Ocarina of Time';
-                EJS_gameUrl = encodeURI('The Legend of Zelda Ocarina of Time.z64');
-                EJS_pathtodata = 'data/';
-                EJS_startOnLoaded = true;
-                EJS_gameID = 1;
-                // Configure emulator with URL encoded ROM path
-                EJS_player = '#game';
-                EJS_core = 'n64';  // ← ADD THIS LINE - CRITICAL!
-                EJS_gameName = 'Ocarina of Time';
-                EJS_gameUrl = 'The%20Legend%20of%20Zelda%20Ocarina%20of%20Time.z64';  // ← Properly encoded
-                EJS_pathtodata = 'data/';
-                EJS_startOnLoaded = true;
-                EJS_gameID = 1;
-                
-                // iPad specific settings
-                EJS_Buttons = {
-                    'start': 0,
-                    'select': 1,
-                    'a': 2,
-                    'b': 3,
-                    'l': 4,
-                    'r': 5,
-                    'z': 6,
-                    'c_up': 7,
-                    'c_down': 8,
-                    'c_left': 9,
-                    'c_right': 10,
-                    'dpad_up': 11,
-                    'dpad_down': 12,
-                    'dpad_left': 13,
-                    'dpad_right': 14,
-                    'analog_up': 15,
-                    'analog_down': 16,
-                    'analog_left': 17,
-                    'analog_right': 18
-                };
-                
-                // Check if game loads after timeout
+                // Hide controls hint after 5 seconds
                 setTimeout(function() {
-                    const canvas = document.querySelector('#game canvas');
-                    if (!canvas) {
-                        showError('Game failed to initialize. This could be due to an incompatible ROM file or missing emulator data.');
-                    } else {
-                        log('Game loaded successfully!');
-                        document.getElementById('loading').style.display = 'none';
-                        
-                        // Hide controls hint after 5 seconds
-                        setTimeout(function() {
-                            document.getElementById('controls-hint').style.display = 'none';
-                        }, 5000);
-                    }
-                }, 15000); // Longer timeout for iPad
-                
-            } catch (e) {
-                showError('Error initializing game: ' + e.message);
+                    document.getElementById('controls-hint').style.display = 'none';
+                }, 5000);
             }
-        }
+        }, 20000); // 20 second timeout for iPad
         
         // Retry button
         document.getElementById('retry-btn').addEventListener('click', function() {
-            document.getElementById('error').style.display = 'none';
-            document.getElementById('loading').style.display = 'block';
-            loadEmulator();
+            location.reload();
         });
-        
-        // Start loading
-        loadEmulator();
         
         // Add touch event listener to enable audio on iOS
         document.addEventListener('touchstart', function() {
@@ -200,6 +129,8 @@
             document.getElementById('controls-hint').style.display = 'none';
         }, { once: true });
     </script>
+    
+    <!-- Load EmulatorJS from CDN -->
+    <script src="https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/loader.js"></script>
 </body>
 </html>
-
