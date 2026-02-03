@@ -54,13 +54,15 @@
         
         addLog('Starting...');
         
-        // Set up configuration
+        // Set up configuration with language fix
         window.EJS_player = '#game';
         window.EJS_core = 'n64';
         window.EJS_gameUrl = 'https://files.catbox.moe/5qa18k.z64';
         window.EJS_pathtodata = 'https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/';
+        window.EJS_language = 'en-US';  // ← Language fix
+        window.EJS_defaultLang = true;  // ← Use built-in English to avoid translation errors
         
-        addLog('Config set: N64 core, ROM from Catbox');
+        addLog('Config set: N64 core, ROM from Catbox, Language: en-US');
         
         // Monitor the game div for changes
         const observer = new MutationObserver(function(mutations) {
@@ -101,11 +103,17 @@
                 }, 3000);
             } else {
                 addLog('✗ No canvas after 90 seconds');
-                addLog('DIAGNOSIS: iPad Safari cannot handle N64 emulation');
-                addLog('SOLUTION: Use Delta Emulator app from App Store');
+                
+                // Check what device
+                if (/iPad|iPhone|iPod/i.test(navigator.userAgent)) {
+                    addLog('DIAGNOSIS: iPad Safari cannot handle N64 emulation');
+                    addLog('SOLUTION: Use Delta Emulator app from App Store');
+                } else {
+                    addLog('DIAGNOSIS: Game failed to load. Check console for errors.');
+                    addLog('Translation errors are usually harmless.');
+                }
             }
         }, 90000);
     </script>
 </body>
 </html>
-
