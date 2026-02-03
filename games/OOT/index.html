@@ -8,277 +8,60 @@
         body {
             margin: 0;
             background: #000;
-            font-family: monospace;
-        }
-        
-        /* Console panel */
-        #console-panel {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 250px;
-            background: #1e1e1e;
-            border-top: 2px solid #00ff00;
-            z-index: 10000;
             display: flex;
-            flex-direction: column;
-            transition: transform 0.3s ease;
-        }
-        
-        #console-panel.hidden {
-            transform: translateY(100%);
-        }
-        
-        #console-header {
-            background: #2d2d2d;
-            padding: 10px;
-            display: flex;
-            justify-content: space-between;
+            justify-content: center;
             align-items: center;
-            border-bottom: 1px solid #444;
+            min-height: 100vh;
         }
-        
-        #console-title {
-            color: #00ff00;
-            font-weight: bold;
-        }
-        
-        #console-toggle {
-            background: #00ff00;
-            color: #000;
-            border: none;
-            padding: 5px 15px;
-            border-radius: 3px;
-            cursor: pointer;
-            font-family: monospace;
-            font-weight: bold;
-        }
-        
-        #console-output {
-            flex: 1;
-            overflow-y: auto;
-            padding: 10px;
-            font-size: 11px;
-            color: #fff;
-        }
-        
-        .log-entry {
-            padding: 3px 0;
-            border-bottom: 1px solid #333;
-        }
-        
-        .log-info { color: #00ff00; }
-        .log-warn { color: #ffaa00; }
-        .log-error { color: #ff4444; }
-        
-        /* Toggle button when console is hidden */
-        #console-toggle-btn {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: #00ff00;
-            color: #000;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-family: monospace;
-            font-weight: bold;
-            z-index: 9999;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-        }
-        
-        #console-toggle-btn.hidden {
-            display: none;
-        }
-        
-        /* Game container */
-        #game-wrapper {
-            height: calc(100vh - 250px);
-            position: relative;
-        }
-        
-        #game-wrapper.fullscreen {
-            height: 100vh;
-        }
-        
         #game {
             width: 100%;
-            height: 100%;
+            max-width: 100vw;
+            height: 100vh;
         }
-        
         #status {
-            position: absolute;
+            position: fixed;
             top: 10px;
             left: 10px;
-            right: 10px;
             color: white;
-            background: rgba(0,0,0,0.9);
-            padding: 15px;
-            font-size: 11px;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
             z-index: 1000;
-            max-height: 150px;
-            overflow-y: auto;
         }
     </style>
 </head>
 <body>
-    <!-- Toggle button (shows when console is hidden) -->
-    <button id="console-toggle-btn" onclick="toggleConsole()">📊 Show Console</button>
-    
-    <!-- Game wrapper -->
-    <div id="game-wrapper">
-        <div id="status">Initializing...</div>
-        <div id="game"></div>
-    </div>
-    
-    <!-- Built-in Console Panel -->
-    <div id="console-panel">
-        <div id="console-header">
-            <span id="console-title">🖥️ Developer Console</span>
-            <button id="console-toggle" onclick="toggleConsole()">Hide Console</button>
-        </div>
-        <div id="console-output"></div>
-    </div>
+    <div id="status">Loading...</div>
+    <div id="game"></div>
     
     <script>
-        let logs = [];
-        const consoleOutput = document.getElementById('console-output');
-        const statusDiv = document.getElementById('status');
-        
-        // Toggle console visibility
-        function toggleConsole() {
-            const panel = document.getElementById('console-panel');
-            const toggleBtn = document.getElementById('console-toggle-btn');
-            const gameWrapper = document.getElementById('game-wrapper');
-            
-            if (panel.classList.contains('hidden')) {
-                panel.classList.remove('hidden');
-                toggleBtn.classList.add('hidden');
-                gameWrapper.classList.remove('fullscreen');
-            } else {
-                panel.classList.add('hidden');
-                toggleBtn.classList.remove('hidden');
-                gameWrapper.classList.add('fullscreen');
-            }
-        }
-        
-        // Add log to both status and console
-        function addLog(msg, type = 'info') {
-            const timestamp = new Date().toLocaleTimeString();
-            const logMessage = timestamp + ': ' + msg;
-            
-            console.log(msg);
-            logs.push(logMessage);
-            
-            // Update status div
-            statusDiv.innerHTML = logs.join('<br>');
-            
-            // Update console panel
-            const entry = document.createElement('div');
-            entry.className = 'log-entry log-' + type;
-            entry.textContent = logMessage;
-            consoleOutput.appendChild(entry);
-            consoleOutput.scrollTop = consoleOutput.scrollHeight;
-        }
-        
-        // Intercept console.log, console.warn, console.error
-        const originalLog = console.log;
-        const originalWarn = console.warn;
-        const originalError = console.error;
-        
-        console.log = function(...args) {
-            originalLog.apply(console, args);
-            addLog(args.join(' '), 'info');
-        };
-        
-        console.warn = function(...args) {
-            originalWarn.apply(console, args);
-            addLog('⚠️ ' + args.join(' '), 'warn');
-        };
-        
-        console.error = function(...args) {
-            originalError.apply(console, args);
-            addLog('❌ ' + args.join(' '), 'error');
-        };
-        
-        // Capture all errors
-        window.onerror = function(msg, url, line, col, error) {
-            addLog('ERROR: ' + msg + ' (line ' + line + ')', 'error');
-            return false;
-        };
-        
-        // Capture unhandled promise rejections
-        window.addEventListener('unhandledrejection', function(event) {
-            addLog('PROMISE ERROR: ' + event.reason, 'error');
-        });
-        
-        addLog('🚀 Starting emulator...', 'info');
-        
-        // Set up configuration with language fix
-        window.EJS_player = '#game';
+        // Configure emulator
+          window.EJS_player = '#game';
         window.EJS_core = 'n64';
         window.EJS_gameUrl = 'https://files.catbox.moe/5qa18k.z64';
         window.EJS_pathtodata = 'https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/';
         window.EJS_language = 'en-US';
         window.EJS_defaultLang = true;
         
-        addLog('✓ Config set: N64 core, ROM from Catbox', 'info');
+        // Optional: Disable language files if they're causing issues
+        window.EJS_defaultLang = true;  // Use built-in English
         
-        // Monitor the game div for changes
-        const observer = new MutationObserver(function(mutations) {
-            mutations.forEach(function(mutation) {
-                if (mutation.addedNodes.length > 0) {
-                    addLog('📦 Element added to #game', 'info');
-                    const canvas = document.querySelector('#game canvas');
-                    if (canvas) {
-                        addLog('✓ Canvas detected! Game initializing...', 'info');
-                    }
-                }
-            });
-        });
-        
-        observer.observe(document.getElementById('game'), { childList: true, subtree: true });
-        
-        addLog('⏳ Loading EmulatorJS from CDN...', 'info');
-    </script>
-    
-    <script src="https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/loader.js" 
-            onload="addLog('✓ EmulatorJS script loaded successfully', 'info');"
-            onerror="addLog('✗ FAILED to load EmulatorJS script', 'error');">
-    </script>
-    
-    <script>
-        // Check progress at intervals
-        setTimeout(() => addLog('⏱️ Checkpoint: 15 seconds...', 'info'), 15000);
-        setTimeout(() => addLog('⏱️ Checkpoint: 30 seconds...', 'info'), 30000);
-        setTimeout(() => addLog('⏱️ Checkpoint: 45 seconds...', 'info'), 45000);
-        setTimeout(() => addLog('⏱️ Checkpoint: 60 seconds...', 'info'), 60000);
+        document.getElementById('status').textContent = 'Loading emulator...';
         
         setTimeout(function() {
             const canvas = document.querySelector('#game canvas');
             if (canvas) {
-                addLog('✓✓✓ SUCCESS! Game canvas found!', 'info');
-                addLog('🎮 Game should be playable now!', 'info');
+                document.getElementById('status').textContent = 'Game running!';
                 setTimeout(() => {
-                    statusDiv.style.display = 'none';
+                    document.getElementById('status').style.display = 'none';
                 }, 3000);
             } else {
-                addLog('✗ No canvas after 90 seconds', 'error');
-                
-                // Check device
-                if (/iPad|iPhone|iPod/i.test(navigator.userAgent)) {
-                    addLog('📱 iPad detected', 'warn');
-                    addLog('⚠️ DIAGNOSIS: iPad Safari cannot handle N64 emulation', 'warn');
-                    addLog('💡 SOLUTION: Use Delta Emulator app from App Store', 'info');
-                } else {
-                    addLog('🖥️ Desktop detected', 'info');
-                    addLog('⚠️ DIAGNOSIS: Game failed to load. Check errors above.', 'warn');
-                    addLog('💡 Translation errors are usually harmless.', 'info');
-                }
+                document.getElementById('status').textContent = 'Loading... (N64 may not work on iPad)';
             }
-        }, 90000);
+        }, 60000);
     </script>
+    
+    <script src="https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/loader.js"></script>
 </body>
 </html>
